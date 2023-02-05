@@ -1,0 +1,509 @@
+/**********************************************
+/ WEEKLY EXERCISE 01 /
+/ RICHARD MOGILKA /
+/ 2022-02-06 /
+*********************************************/
+
+/* EXERCISE 1*/
+/*
+Translate the following statement into SQL: “Show me all of our customers first names, last names, and phone numbers who live in California.”
+a. Use sales.Customers table
+b. Include all four steps of the translation process
+
+1 - Formulate
+“Show me all of our customers first names, last names, and phone numbers who live in California.”
+2 - Translate
+SELECT customers first names, last names, and phone numbers FROM customers table WHERE customer lives in California
+3 - Cleanup
+SELECT first name, last name, phone number FROM customers WHERE California
+4 - Finalize 
+*/
+SELECT CustFirstName, CustLastName, CustPhoneNumber 
+    FROM sales.Customers 
+        WHERE CustState = 'CA'
+
+/* EXERCISE 2*/
+/*
+Translate the following statement into SQL: “Give me the current students first names, last names, state and age in alphabetical order by last name.”
+a. Use school.Students table
+b. Only provide the SQL
+*/
+SELECT StudFirstName, StudLastName, StudState, (2022 - DATEPART(year, StudBirthDate)) AS 'StudAge' 
+    FROM school.Students
+        ORDER BY StudLastName ASC
+
+/* EXERCISE 3*/
+/*
+Translate the following statement into SQL: “Give me the goals per shots ratio for players who were on the ice for more than 10 minutes and had more than 3 shots.”
+a. Use nhl.game_skater_stats
+b. Only provide the SQL
+c. Hint: time_on_ice is in seconds
+*/
+SELECT player_id , CAST(goals AS float)/shots AS 'goalsPerShots_ratio'
+    FROM nhl.game_skater_stats
+        WHERE time_on_ice > 600 AND shots > 3 /*time is in seconds (60sec * 10min = 600sec) and shots need to be 4 or greater */
+
+/* EXERCISE 4*/
+/*
+Translate the following statement into SQL: “Show me the last name, salary, and date hired for our staff hired between 1991 and 1996.”
+a. Use school.Staff
+b. Include all four steps of the translation process
+
+1 - Formulate
+“Show me the last name, salary, and date hired for our staff hired between 1991 and 1996.”
+2 - Translate
+SELECT staff last name, salary, and hire date FROM school staff table WHERE hired between 1991 and 1996
+3 - Cleanup
+SELECT StfLastname, Salary, DateHired FROM Staff WHERE 1991-1996
+4 - Finalize 
+*/
+SELECT StfLastname, Salary, DateHired 
+    FROM school.Staff 
+        WHERE DateHired BETWEEN '1991' AND '1996' 
+        
+/**********************************************
+/ WEEKLY EXERCISE 02 /
+/ RICHARD MOGILKA /
+/ 2022-02-13 /
+*********************************************/
+
+/* EXERCISE 1*/
+/*
+The following questions are based on these sets.
+𝐴={1,2,3,4} 𝐵={3,4} 𝐶={∅} 𝐷={6,7}
+
+a. How many elements are in set A?
+    ANSWER: 4
+b. Which set has 0 elements?
+    ANSWER - Set C
+c. What is the intersection of sets A and B?
+    ANSWER: {3,4}
+d. What is the intersection of sets A and C?
+    ANSWER: {∅}
+e. What is the intersection of sets B and D?
+    ANSWER: {∅}
+f. What is the union of sets A and D?
+    ANSWER: {1,2,3,4,6,7}
+g. What is the union of sets A and C?
+    ANSWER: {1,2,3,4}
+h. True or False: B is a subset of A.
+    ANSWER: TRUE
+i. What is the difference of sets A and B?
+    ANSWER: {1,2}
+j. What is the difference of sets D and C?
+    ANSWER: {6,7}
+*/
+
+/* EXERCISE 2*/
+/*
+2. What queries will answer the following questions?
+a. “Show me the order numbers, products and retail prices of items ordered in 2017”
+i. sales.Orders, sales.Order_Details, sales.Products
+*/
+SELECT od.OrderNumber, p.ProductName, p.RetailPrice
+    FROM sales.Order_Details AS od
+        INNER JOIN sales.Orders as o
+            ON od.OrderNumber = o.OrderNumber
+        INNER JOIN sales.Products AS p
+            ON od.ProductNumber = p.ProductNumber
+        WHERE o.OrderDate BETWEEN '2017-01-01' AND '2017-12-31'
+        ORDER BY o.OrderNumber
+/*
+b. “List the bowling teams and all team members in alphabetical order by team name.”
+i. bowl.Teams, bowl.Bowlers
+*/
+SELECT TeamName, BowlerLastName, BowlerFirstName
+    FROM bowl.Teams AS t
+        INNER JOIN bowl.Bowlers AS b
+            ON t.TeamID = b.TeamID
+        ORDER BY t.TeamName, b.BowlerLastName
+/*
+c. “Show me all of the hockey teams that have won at home in overtime ordered by the date they occurred.” (Hint: Game outcome should equal ‘home win OT’)
+i. nhl.team_info, nhl.game
+*/
+SELECT g.date_time, (i.long_name + ' ' + i.short_name) AS 'Team'
+    FROM nhl.team_info AS i
+        INNER JOIN nhl.game AS g
+            ON i.team_id = g.home_team_id
+        WHERE g.outcome = 'home win OT'
+        ORDER BY g.date_time_gmt ASC
+/*
+d. “List employees and the customers for whom they booked an order.”
+i. sales.Orders, sales.Customers, sales.Employees
+*/
+SELECT DISTINCT (e.EmpLastName + ', ' + e.EmpFirstName) AS 'Employee', (c.CustLastName + ', ' + c.CustFirstName) AS 'Customer' /*some customers have multiple orders with some employees */
+    FROM sales.Customers AS c
+        INNER JOIN sales.Orders AS o
+            ON c.CustomerID = o.CustomerID
+        INNER JOIN sales.Employees AS e
+            ON e.EmployeeID = o.EmployeeID
+        ORDER BY 'Employee', 'Customer' ASC /*need to sort by last, first since some people share last names */
+
+/**********************************************
+/ WEEKLY EXERCISE 03 /
+/ RICHARD MOGILKA /
+/ 2022-02-20 /
+*********************************************/
+
+/* EXERCISE 1*//*
+1. “Show me customers who have never ordered a helmet.”
+    a. Sales.Customers, sales.Orders, sales.Order_Details, sales.Products
+*/
+SELECT c1.CustLastName, c1.CustFirstName
+FROM sales.Customers AS c1
+    INNER JOIN 
+        (SELECT c2.CustomerID
+            FROM sales.Customers AS c2
+                LEFT JOIN 
+                    (SELECT o.CustomerID
+                        FROM sales.Orders AS o
+                            INNER JOIN sales.Order_Details AS od
+                            ON o.OrderNumber = od.OrderNumber
+                            INNER JOIN sales.Products AS p
+                            ON od.ProductNumber = p.ProductNumber
+                                WHERE ProductName LIKE '%Helmet' AND RetailPrice > 30
+                                /* added RetailPrice filter since there is a product that is a helmet mounted mirror, which is not a helmet, that costs under $30 so that it can be excluded */
+                    ) AS helmet
+                ON c2.CustomerID = helmet.CustomerID
+                    WHERE helmet.CustomerID IS NULL
+        ) AS helNull
+    ON c1.CustomerID = helNull.CustomerID
+
+/* EXERCISE 2*//*
+2. “Display matches with no game data.”
+    a. Bowl.Tourney_Matches, bowl.Match_Games
+*/
+SELECT *
+    FROM bowl.Tourney_Matches AS btm
+        LEFT JOIN
+            (SELECT *
+                FROM bowl.Match_Games
+                    WHERE MatchID IS NOT NULL
+            ) AS bmg
+        ON btm.MatchID = bmg.MatchID
+            WHERE bmg.MatchID IS NULL
+
+/* EXERCISE 3*//*
+3. “Display bowlers who have never bowled a raw score greater than 150.”
+    a. Bowl.Bowlers, bowl.Bowler_Scores
+*/
+SELECT bb.BowlerFirstName, bb.BowlerLastName
+    FROM bowl.Bowlers AS bb
+        LEFT JOIN
+            (SELECT BowlerID
+                FROM bowl.Bowler_Scores
+                    WHERE RawScore > 150
+            ) AS bbs
+        ON bb.BowlerID = bbs.BowlerID
+            WHERE bbs.BowlerID IS NULL
+                ORDER BY bb.BowlerLastName, bb.BowlerFirstName ASC
+
+/* EXERCISE 4*//*
+4. “Display all faculty and the classes they are scheduled to teach.”
+    a. School.Staff, school.Faculty, school.Faculty_Classes
+*/
+SELECT s.StfFirstName, s.StfLastname, teach.ClassID 
+    FROM school.Staff AS s
+        INNER JOIN school.Faculty AS f
+        ON s.StaffID = f.StaffID
+        INNER JOIN 
+            (SELECT * 
+                FROM school.Faculty_Classes AS fc
+                    WHERE fc.ClassID IS NOT NULL
+            ) AS teach
+        ON f.StaffID = teach.StaffID
+            ORDER BY s.StfLastname, teach.ClassID
+            
+/**********************************************
+/ WEEKLY EXERCISE 04 /
+/ RICHARD MOGILKA /
+/ 2022-02-27 /
+*********************************************/
+
+/*Exercise 1*//*
+“Display for each bowler the bowler name and the average of the bowler’s raw game scores in alphabetical order by last name.”
+a. Tables: bowl.Bowlers, bowl.Bowler_Scores
+*/
+SELECT (b.BowlerFirstName + ' ' + b.BowlerLastName) AS 'Bowler', AVG(bs.RawScore) AS 'Average Score'
+    FROM bowl.Bowlers AS b
+        INNER JOIN bowl.Bowler_Scores AS bs
+            ON b.BowlerID = bs.BowlerID
+GROUP BY b.BowlerFirstName, b.BowlerLastName
+    ORDER BY b.BowlerLastName ASC
+
+/*Exercise 2*//*
+“What was the date of our first order?
+a. Tables: sales.Orders
+*/
+SELECT MIN(OrderDate) AS 'First Order Date'
+    FROM sales.Orders
+
+/*Exercise 3*//*
+“How many orders has each of our customers placed?”
+a. Tables: sales.Customers, sales.Orders
+*/
+SELECT c.CustFirstName, c.CustLastName, COUNT(o.OrderNumber) AS 'Number of Orders Placed'
+    FROM sales.Customers AS c
+        INNER JOIN sales.Orders AS o
+            ON c.CustomerID = o.CustomerID
+GROUP BY c.CustFirstName, c.CustLastName
+    ORDER BY 'Number of Orders Placed' DESC
+
+/*Exercise 4*//*
+“Show me how many orders each employee has placed and the date of their first and most recent orders.”
+a. Tables: sales.Employees, sales.Orders
+*/
+SELECT (e.EmpFirstName + ' ' + e.EmpLastName) AS 'Employee', MIN(o.OrderDate) AS 'First Order', MAX(o.OrderDate) AS 'Most Recent Order'
+    FROM sales.Employees AS e
+        INNER JOIN sales.Orders AS o
+            ON e.EmployeeID = o.EmployeeID
+GROUP BY e.EmpFirstName, e.EmpLastName
+
+/**********************************************
+/ WEEKLY EXERCISE 05 /
+/ RICHARD MOGILKA /
+/ 2022-03-06 /
+*********************************************/
+
+/*Exercise 1*//*
+1. Explain the effect of the following SQL statement:
+UPDATE sales.Order_Details 
+SET QuotedPrice = QuotedPrice * 1.32
+WHERE OrderNumber IN ( 
+    SELECT OrderNumber 
+    FROM sales.Orders 
+    WHERE DATEPART(year, OrderDate) = '2018')
+
+*****ANSWER*****
+This SQL statement is _increasing_ the 'Quoted Price' for all orders that were placed in 2018 by 32%. So for example, if the quoted price was 100, the new price would be 132 after this update.
+
+/*Exercise 2*//*
+2. Explain the effect of the following SQL statement:
+INSERT INTO sales.Customers (CustFirstName, CustLastName, CustStreetAddress, CustCity, CustState, CustZipCode, CustAreaCode, CustPhoneNumber) 
+VALUES('Juli', 'Lisser', '2300 E Kenwood Blvd', 'Milwaukee', 'WI', '53211', 414, '484-8592')
+
+*****ANSWER*****
+This SQL statement is adding a new row to the sales.Customers table. When inserting, the columns and the values to be inserted into those columns must be order specified; in this case, 'Juli' will be inserted into 'CustFirstName', 'Lisser' into 'CustLastName', and so forth. If the order is not correctly aligned, nondesired values will be inserted into the wrong columns. 
+
+/*Exercise 3*//*
+3. Explain the effect of the following SQL statement: 
+DELETE FROM school.Subjects 
+WHERE SubjectID IN ( 
+    SELECT s.SubjectID 
+    FROM school.Subjects AS s 
+        LEFT JOIN school.Faculty_Subjects AS fs 
+            ON s.SubjectID = fs.SubjectID 
+    WHERE fs.StaffID IS NULL)
+
+--*****ANSWER*****
+This DELETE statment is intended to delete any rows from school.Subjects table that do not have a faculty member assigned to teach the course: checking if 'fs.StaffID IS NULL'. In this particular example, only one row will be removed and that is 'JRN 104' which is College Publications.
+
+/*Exercise 4*//*
+4. Write a SQL statement to resolve the following question: ‘What products have never been ordered?’
+a. Tables: sales.Products, sales.Order_Details
+*/
+SELECT p.ProductNumber, p.ProductName
+FROM sales.Products AS p
+    LEFT JOIN sales.Order_Details AS od
+        ON p.ProductNumber = od.ProductNumber
+WHERE od.QuantityOrdered IS NULL
+    ORDER BY p.ProductNumber ASC
+    
+/**********************************************
+/ WEEKLY EXERCISE 06 /
+/ RICHARD MOGILKA /
+/ 2022-03-13 /
+*********************************************/
+
+/*Exercise 1*//*
+1. What is the result of the following script?
+CREATE DATABASE DemoDB;
+
+CREATE TABLE Students(
+    student_id INT NOT NULL PRIMARY KEY,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    street_address NVARCHAR(150),
+    state VARCHAR(25),
+    city VARCHAR(75),
+    zipcode VARCHAR(10),
+    phone_number VARCHAR(11),
+    major VARCHAR(100)
+);
+
+*****ANSWER*****
+This script first creates the database named 'DemoDB'. Then next creates a table, named 'Students', and defines 9 columns for that table and what kind of data types belong to those columns. Column 'student_id' is defined as the primary key, which is why it's declared as 'NOT NULL'. */
+
+/*Exercise 2*//*
+2. What is the result of the following script?
+CREATE DATABASE NHLData;
+
+CREATE TABLE game_plays_players(
+    game_id VARCHAR(50) NOT NULL FOREIGN KEY REFERENCES game(game_id),
+    play_id VARCHAR(50) NOT NULL FOREIGN KEY REFERENCES game_plays(play_id),
+    player_id VARCHAR(50) NOT NULL FOREIGN KEY REFERENCES player_info(player_id),
+    play_num INT,
+    player_type VARCHAR(50),
+    CONSTRAINT game_plays_players_id PRIMARY KEY (game_id, play_id, player_id)
+);
+
+*****ANSWER*****
+ This script creates the database 'NHLData'. It then defines the columns and what data types belong to those columns. 'game_id', 'play_id', and 'player_id' are defined as foreign keys and what 'table(column)' refer to. This is summarized at the bottom with 'CONSTRAINT' as a composite primary key for this table. */
+
+/*Exercise 3*//*
+3. Create a DDL script which will create the sales.Orders table. 
+*/
+CREATE TABLE sales.Orders(
+    OrderNumber INT NOT NULL PRIMARY KEY,
+    OrderDate DATE,
+    ShipDate DATE,
+    CustomerID INT FOREIGN KEY REFERENCES sales.Customers(CustomerID),
+    EmployeeID INT FOREIGN KEY REFERENCES sales.Employees(EmployeeID),
+);
+
+/*Exercise 4*//*
+4. Write a SQL script to answer the following request: “Give me a list of all faculty in alphabetical order by last name and the number of courses they have taught.”
+a. Tables – school.Faculty, school.Staff, school.Faculty_Classes
+b. Note – You must include staff that have not taught any classes
+*/
+SELECT (st.StfFirstName + ' ' + st.StfLastname) AS 'Faculty/Staff', COUNT(sfc.StaffID) AS 'Number of courses taught'
+FROM school.Faculty AS f
+    RIGHT JOIN school.Staff AS st --since school.Staff has more rows than school.Faculty, RIGHT JOIN will capture nulls unlike LEFT JOIN
+        ON f.StaffID = st.StaffID
+    LEFT JOIN school.Faculty_Classes AS sfc --count this StaffID in line 63 SELECT since this column's 'StaffID' will have null IDs, unlike the previous joins
+        ON st.StaffID = sfc.StaffID
+GROUP BY st.StfFirstName, st.StfLastname
+    ORDER BY st.StfLastname ASC
+    
+/**********************************************
+/ MIDTERM 2022 /
+/ RICHARD MOGILKA /
+/ 2022-03-20 /
+*********************************************/
+/*
+The management team at your company is preparing for a large annual review. Acting as the sales team’s database analyst, provide a SQL statement which will generate a results set or change the data that is stored.
+All queries will use the sales schema.
+Each question should be answered with one SQL query.
+The final solution file should be around 100 lines of code.
+*/
+
+/* EXERCISE 1*//*
+1. What are the top 5 products ordered in 2017 for California customers by total units ordered and total order price?
+*/
+SELECT TOP 5 p.ProductName, SUM(od.QuantityOrdered) AS 'Total Units Ordered', p.ProductName, SUM(od.QuotedPrice) AS 'Total Order Price' 
+FROM sales.Products AS p
+    INNER JOIN sales.Order_Details AS od
+        ON p.ProductNumber = od.ProductNumber
+    INNER JOIN sales.Orders AS o
+        ON od.OrderNumber = o.OrderNumber
+    INNER JOIN sales.Customers AS c
+        ON o.CustomerID = c.CustomerID
+WHERE c.CustState = 'CA' AND o.OrderDate BETWEEN '2017-01-01' AND '2017-12-31'
+GROUP BY p.ProductName
+    ORDER BY 'Total Units Ordered' DESC, 'Total Order Price' DESC
+
+/* EXERCISE 2*//*
+2. Which vendors deliver all products in less than 1 week?
+*/
+SELECT v.VendName
+FROM sales.Vendors AS v
+    LEFT JOIN 
+        (SELECT DISTINCT VendorID
+        FROM sales.Product_Vendors AS pv
+        WHERE DaysToDeliver >= 7) AS sevenAndOver
+    ON v.VendorID = sevenAndOver.VendorID
+WHERE sevenAndOver.VendorID IS NULL
+
+/* EXERCISE 3*//*
+3. Who are the top 2 vendors that sell clothing items with the lowest average wholesale price per item? What are their phone numbers and how many clothing items do we currently sell from them?
+*/
+SELECT TOP 2 v.VendName, v.VendPhoneNumber, AVG(pv.WholesalePrice) AS 'lowest average wholesale price', COUNT(p.ProductNumber) AS 'total number of clothing items sold'
+FROM sales.Vendors AS v
+    LEFT JOIN sales.Product_Vendors AS pv
+        ON v.VendorID = pv.VendorID
+    LEFT JOIN sales.Products AS p
+        ON pv.ProductNumber = p.ProductNumber
+WHERE p.CategoryID = 3
+GROUP BY v.VendName, v.VendPhoneNumber
+    ORDER BY 'lowest average wholesale price' ASC
+
+/* EXERCISE 4*//*
+4. What is the average retail price and total units ordered for each customer specific to products from California vendors?
+*/
+SELECT c.CustFirstName, c.CustLastName, AVG(caliVen.RetailPrice) AS 'Average Retail Price', SUM(caliVen.QuantityOrdered) AS 'Total Units Ordered'
+FROM sales.Customers AS c
+    LEFT JOIN 
+        (SELECT o.CustomerID, od.QuantityOrdered, p.RetailPrice --CA vendors table
+        FROM sales.Vendors AS v
+            INNER JOIN sales.Product_Vendors AS pv
+                ON v.VendorID = pv.VendorID
+            INNER JOIN sales.Products AS p
+                ON pv.ProductNumber = p.ProductNumber
+            INNER JOIN sales.Order_Details AS od
+                ON p.ProductNumber = od.ProductNumber
+            INNER JOIN sales.Orders AS o
+                ON od.OrderNumber = o.OrderNumber
+        WHERE v.VendState = 'CA'
+        ) AS caliVen
+    ON c.CustomerID = caliVen.CustomerID
+GROUP BY c.CustFirstName, c.CustLastName
+    ORDER BY c.CustLastName ASC
+
+/* EXERCISE 5*//*
+5. During a customer’s most recent order, how many days elapsed between the order and ship date?
+*/
+SELECT c.CustFirstName, c.CustLastName, DATEDIFF(day, MAX(o.OrderDate), MAX(o.ShipDate)) AS 'Days from order date to ship date'
+FROM sales.Customers AS c
+LEFT JOIN sales.Orders AS o
+    ON c.CustomerID = o.CustomerID
+WHERE o.OrderDate =
+    (SELECT MAX(o2.OrderDate)--, MAX(o2.ShipDate)
+     FROM sales.Orders AS o2
+     WHERE c.CustomerID = o2.CustomerID
+    )
+GROUP BY c.CustFirstName, c.CustLastName
+
+/* EXERCISE 6*//*
+6. What are the total number of orders placed by employees in Texas in 2018? What were the total number of orders placed by employees in Washington in 2018?
+*/
+SELECT e.EmpState, COUNT(e.EmpState) AS 'Total Orders Placed in 2018'
+FROM sales.Orders AS o
+    LEFT JOIN sales.Employees AS e
+        ON o.EmployeeID = e.EmployeeID
+WHERE o.OrderDate BETWEEN '2018-01-01' AND '2018-12-31' --no filter needed for WA or TX because ALL employees are from WA or TX
+GROUP BY e.EmpState
+
+/* EXERCISE 7*//*
+7. How many items have been sold from each product category in 2017?
+*/
+SELECT c.CategoryDescription, SUM(od.QuantityOrdered) AS 'Total Sold in 2017'
+FROM sales.Orders AS o
+    INNER JOIN sales.Order_Details AS od
+        ON o.OrderNumber = od.OrderNumber
+    INNER JOIN sales.Products AS p
+        ON od.ProductNumber = p.ProductNumber
+    INNER JOIN sales.Categories AS c
+        ON p.CategoryID = c.CategoryID
+WHERE o.OrderDate BETWEEN '2017-01-01' AND '2017-12-31'
+GROUP BY p.CategoryID, c.CategoryDescription
+    ORDER BY p.CategoryID ASC
+
+/* EXERCISE 8*//*
+8. Which employees did not sell tires in March 2018?
+*/
+SELECT e1.EmpFirstName, e1.EmpLastName
+FROM sales.Employees AS e1
+LEFT JOIN
+    (SELECT e.EmpFirstName, e.EmpLastName, e.EmployeeID --find employees who sold tires in March 2018
+    FROM sales.Employees AS e
+        LEFT JOIN sales.Orders AS o
+            ON e.EmployeeID = o.EmployeeID
+        INNER JOIN sales.Order_Details AS od
+            ON o.OrderNumber = od.OrderNumber
+        INNER JOIN sales.Products AS p
+            ON od.ProductNumber = p.ProductNumber
+    WHERE o.OrderDate BETWEEN '2018-03-01' AND '2018-03-31' AND p.CategoryID = 6
+    ) AS e2
+ON e1.EmployeeID = e2.EmployeeID
+WHERE e2.EmployeeID IS NULL
+    ORDER BY e1.EmpLastName ASC
